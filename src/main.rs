@@ -56,8 +56,6 @@ type Map = Vec<Vec<Piece>>;
 fn build_map() -> Map {
     let mut map: Map = vec![vec![Piece::new(0); WORLD_SIZE[1] as usize]; WORLD_SIZE[0] as usize];
 
-    map[1][2] = Piece::new(4);
-
     map
 }
 
@@ -95,15 +93,6 @@ fn main() {
                             c.transform,
                             g,
                         );
-
-                        if map[i as usize][j as usize].shape != 0 {
-                            graphics::Rectangle::new_border(BLACK, 2.0).color(YELLOW).draw(
-                                pos,
-                                &c.draw_state,
-                                c.transform,
-                                g,
-                            );
-                        }
                     }
                 }
             })
