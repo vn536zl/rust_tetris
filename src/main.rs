@@ -55,7 +55,6 @@ type Map = Vec<Vec<Piece>>;
 
 fn build_map() -> Map {
     let mut map: Map = vec![vec![Piece::new(0); WORLD_SIZE[1] as usize]; WORLD_SIZE[0] as usize];
-
     map
 }
 
