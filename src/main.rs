@@ -68,8 +68,6 @@ fn main() {
     let mut gl = GlGraphics::new(opengl);
     let map = build_map();
 
-    println!("{}, {}", map.len(), map[0].len());
-
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
 
