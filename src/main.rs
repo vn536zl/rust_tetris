@@ -56,7 +56,14 @@ type Map = Vec<Vec<Piece>>;
 fn build_map() -> Map {
     let mut map: Map = vec![vec![Piece::new(0); WORLD_SIZE[1] as usize]; WORLD_SIZE[0] as usize];
 
-    map[1][2] = Piece::new(4);
+    map[3][0] = Piece::new(4);
+
+    for i in &map {
+        print!("");
+        for j in i {
+            println!("{}", j.shape)
+        }
+    }
 
     map
 }
@@ -70,8 +77,6 @@ fn main() {
 
     let mut gl = GlGraphics::new(opengl);
     let map = build_map();
-
-    println!("{}, {}", map.len(), map[0].len());
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
