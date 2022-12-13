@@ -13,59 +13,18 @@ use piston::input::{ButtonState, Button, Key};
 use piston::{ButtonEvent, RenderEvent, WindowSettings};
 use piston::Key::B;
 
-type Color = [f32; 4];
+use rand::Rng;
 
-const WHITE: Color = [1.0; 4];
-const BLACK: Color = [0.0, 0.0, 0.0, 1.0];
-const RED: Color = [1.0, 0.0, 0.0, 1.0];
-const GREEN: Color = [0.0, 1.0, 0.0, 1.0];
-const BLUE: Color = [0.0, 0.0, 1.0, 1.0];
-const YELLOW: Color = [1.0, 1.0, 0.0, 1.0];
+use tetris::libs::constants::app_constants::*;
+use tetris::libs::pieces_src::pieces::Piece;
+use tetris::libs::map_src::map::*;
 
-const START_SIZE: [f64; 2] = [320.0, 512.0];
-const PIXEL_SIZE: f64 = 32.0;
-const WORLD_SIZE: [f64; 2] = [START_SIZE[0]/PIXEL_SIZE, START_SIZE[1]/PIXEL_SIZE];
 
-#[derive(Clone)]
-struct Piece {
-    shape: i32,
-    rotation: f64,
-    pos: [i32; 2],
-}
 
-impl Piece {
-    fn new(shape: i32) -> Self {
-        Piece {
-            shape,
-            rotation: 0.0,
-            pos: [5, 0],
-        }
-    }
+fn random_piece() -> Piece {
+    let rand = rand::thread_rng().gen_range(1..=7);
 
-    fn rotate(&mut self, dir: i32) {
-        if dir == 0 {
-            self.rotation -= 2.0;
-        } else {
-            self.rotation += 2.0;
-        }
-    }
-}
-
-type Map = Vec<Vec<Piece>>;
-
-fn build_map() -> Map {
-    let mut map: Map = vec![vec![Piece::new(0); WORLD_SIZE[1] as usize]; WORLD_SIZE[0] as usize];
-
-    map[3][0] = Piece::new(4);
-
-    for i in &map {
-        print!("");
-        for j in i {
-            println!("{}", j.shape)
-        }
-    }
-
-    map
+    Piece::new(rand)
 }
 
 fn main() {
@@ -76,7 +35,9 @@ fn main() {
     let mut window: Window = settings.build().expect("Error Creating Window");
 
     let mut gl = GlGraphics::new(opengl);
-    let map = build_map();
+    let mut map = build_map();
+
+    let mut active_piece = random_piece();
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
@@ -87,6 +48,7 @@ fn main() {
 
                 for i in 0..WORLD_SIZE[0] as i32 {
                     for j in 0..WORLD_SIZE[1] as i32 {
+                        let mut color = WHITE;
                         let pos: [f64; 4] = [
                             PIXEL_SIZE * i as f64,
                             PIXEL_SIZE * j as f64,
@@ -94,24 +56,41 @@ fn main() {
                             PIXEL_SIZE * (j + 1) as f64,
                         ];
 
-                        graphics::Rectangle::new_border(BLACK, 2.0).draw(
+                        if active_piece.shape.contains(&[i, j]) {
+                            color = active_piece.color;
+                            map[i as usize][j as usize] = 1;
+                        }else if map[i as usize][j as usize] != 2 {
+                            map[i as usize][j as usize] = 0;
+                        }
+
+                        graphics::Rectangle::new_border(BLACK, 2.0).color(color).draw(
                             pos,
                             &c.draw_state,
                             c.transform,
                             g,
                         );
-
-                        if map[i as usize][j as usize].shape != 0 {
-                            graphics::Rectangle::new_border(BLACK, 2.0).color(YELLOW).draw(
-                                pos,
-                                &c.draw_state,
-                                c.transform,
-                                g,
-                            );
-                        }
                     }
                 }
             })
+        }
+        if let Some(k) = e.button_args() {
+            if k.state == ButtonState::Press {
+                match k.button {
+                    Button::Keyboard(Key::S) => {
+                        active_piece.fall(&map)
+                    },
+                    Button::Keyboard(Key::W) => {
+                        active_piece.fall(&map)
+                    },
+                    Button::Keyboard(Key::A) => {
+                        active_piece.fall(&map)
+                    },
+                    Button::Keyboard(Key::D) => {
+                        active_piece.fall(&map)
+                    },
+                    _ => {},
+                }
+            }
         }
     }
 }
