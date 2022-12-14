@@ -9,13 +9,14 @@ pub struct Piece {
     pub color: Color,
     pub rotation: i32,
     pub active: bool,
+    pub pos: [i32; 2],
 }
 
 impl Piece {
     pub fn new(shape_id: i32) -> Self {
         Piece {
             shape_id,
-            shape: draw_pieces(shape_id,[4, 0]),
+            shape: draw_pieces(shape_id, 0, [4, 0]),
             color: match shape_id {
                 1 => LIGHT_BLUE,
                 2 => BLUE,
@@ -32,6 +33,7 @@ impl Piece {
                 0 => false,
                 _ => true
             },
+            pos: [4, 0],
         }
     }
 
@@ -41,7 +43,7 @@ impl Piece {
         if self.active {
             let mut counter = 0;
             for cord in self.shape {
-                if (cord[1] + 1 < WORLD_SIZE[1] as i32) && (map[cord[0] as usize][(cord[1] + 1) as usize] != 2) {
+                if (cord[1] + 1 < WORLD_SIZE[1] as i32 - 1) && (map[cord[0] as usize][(cord[1] + 1) as usize] != 2) {
                     new_shape[counter] = [cord[0], cord[1] + 1];
                 } else {
                     self.landed();
@@ -52,6 +54,7 @@ impl Piece {
 
         if new_shape != [[0, 0]; 4] {
             self.shape = new_shape;
+            self.pos = [self.pos[0], self.pos[1]+1]
         }
     }
 
@@ -60,62 +63,116 @@ impl Piece {
     }
 
     pub fn rotate(&mut self, dir: &str) {
-
-        let shape = self.shape;
+        let mut rotation = self.rotation;
         if dir == "left" {
-            let (point1, point2, point3, point4) = (shape[0], shape[1], shape[2], shape[3]);
-            self.shape = match self.shape_id {
-                1 => {
-                    [
-                        [point1[0]+1, point1[1]+1],
-                        point2,
-                        [point3[0]-1, point3[1]-1],
-                        [point4[0]-2, point4[0]-2],
-                    ]
-                },
-                2 => {
-                    [
-                        [point1[0]+1, point1[1]],
-                        point2,
-                        [point3[0]-1, point3[1]+1],
-                        [point3[0]-2, point3[1]+1],
-                    ]
-                }
-                _ => [
-                    [0, 0],
-                    [0, 0],
-                    [0, 0],
-                    [0, 0],
-                ]
+            rotation -= 1;
+            if rotation < 0 {
+                rotation = 3;
             }
         } else if dir == "right" {
-            if self.shape_id != 4 {
-
+            rotation += 1;
+            if rotation > 3 {
+                rotation = 0;
             }
         }
+
+        self.rotation = rotation;
+        self.shape = draw_pieces(self.shape_id, self.rotation, self.pos);
     }
 }
 
-fn draw_pieces(shape: i32, pos: [i32; 2]) -> PieceShape {
-    let area: PieceShape = match shape {
-        1 => {[
-            [pos[0]-1, pos[1]],
-            [pos[0], pos[1]],
-            [pos[0]+1, pos[1]],
-            [pos[0]+2, pos[1]],
-        ]},
-        2 => {[
-            [pos[0], pos[1]+1],
-            [pos[0], pos[1]],
-            [pos[0]+1, pos[1]],
-            [pos[0]+2, pos[1]],
-        ]},
-        3 => {[
-            [pos[0]-1, pos[1]],
-            [pos[0], pos[1]],
-            [pos[0]+1, pos[1]],
-            [pos[0]+1, pos[1]-1],
-        ]},
+fn draw_pieces(shape_id: i32, rotation: i32, pos: [i32; 2]) -> PieceShape {
+    let area: PieceShape = match shape_id {
+        1 => {
+            match rotation {
+                0 => {[
+                    [pos[0]-1, pos[1]],
+                    [pos[0], pos[1]],
+                    [pos[0]+1, pos[1]],
+                    [pos[0]+2, pos[1]],
+                ]},
+                1 => {[
+                    [pos[0], pos[1]-1],
+                    [pos[0], pos[1]],
+                    [pos[0], pos[1]+1],
+                    [pos[0], pos[1]+2],
+                ]}
+                2 => {[
+                    [pos[0]-1, pos[1]],
+                    [pos[0], pos[1]],
+                    [pos[0]+1, pos[1]],
+                    [pos[0]+2, pos[1]],
+                ]},
+                3 => {[
+                    [pos[0], pos[1]-1],
+                    [pos[0], pos[1]],
+                    [pos[0], pos[1]+1],
+                    [pos[0], pos[1]+2],
+                ]}
+                _ => {
+                    println!("Rotation Out of bounds");
+                    [
+                        [0, 0],
+                        [0, 0],
+                        [0, 0],
+                        [0, 0],
+                    ]
+                }
+            }
+        },
+        2 => {
+            match rotation {
+                0=> {[
+                    [pos[0]-1, pos[1]+1],
+                    [pos[0]-1, pos[1]],
+                    [pos[0], pos[1]],
+                    [pos[0]+1, pos[1]],
+                ]},
+                1 => {[
+                    [pos[0], pos[1]],
+                    [pos[0]+1, pos[1]],
+                    [pos[0]+1, pos[1]+1],
+                    [pos[0]+1, pos[1]+2],
+                ]},
+                2 => {[
+                    [pos[0]+2, pos[1]],
+                    [pos[0]+2, pos[1]+1],
+                    [pos[0]+1, pos[1]+1],
+                    [pos[0], pos[1]+1],
+                ]},
+                3 => {[
+                    [pos[0], pos[1]],
+                    [pos[0], pos[1]+1],
+                    [pos[0], pos[1]+2],
+                    [pos[0]+1, pos[1]+2],
+                ]}
+                _ => {
+                    println!("Rotation Out of bounds");
+                    [
+                        [0, 0],
+                        [0, 0],
+                        [0, 0],
+                        [0, 0],
+                    ]
+                }
+            }
+        },
+        3 => {
+            match rotation {
+                0 => {[
+                    [pos[0]-1, pos[1]],
+                    [pos[0], pos[1]],
+                    [pos[0]+1, pos[1]],
+                    [pos[0]+1, pos[1]+1],
+                ]},
+                1 => {[
+                    [pos[0], pos[1]],
+                    [pos[0], pos[1]+1],
+                    [pos[0], pos[1]+2],
+                    [pos[0]-1, pos[1]+2],
+                ]}
+            }
+        },
         4 => {[
             [pos[0], pos[1]+1],
             [pos[0], pos[1]],
