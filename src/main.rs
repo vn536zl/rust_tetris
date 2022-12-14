@@ -42,7 +42,7 @@ fn main() {
                             PIXEL_SIZE * (j + 1) as f64,
                         ];
 
-                        graphics::Rectangle::new_border(BLACK, 2.0).color().draw(
+                        graphics::Rectangle::new_border(BLACK, 2.0).color(color).draw(
                             pos,
                             &c.draw_state,
                             c.transform,

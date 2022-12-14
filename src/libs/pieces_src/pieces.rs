@@ -19,5 +19,4 @@ pub struct Piece {
     pub rotation: i32,
     pub position: [i32; 2],
     pub color: Color,
-
 }
