@@ -138,6 +138,7 @@ impl Piece {
             map[cord[0] as usize][cord[1] as usize] = MapCell::new(self.piece);
             map[cord[0] as usize][cord[1] as usize].filled = true;
         }
+        check_lines(map);
     }
 
     pub fn fall(&mut self, map: &mut Map) {

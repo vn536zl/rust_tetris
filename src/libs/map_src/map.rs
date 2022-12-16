@@ -1,4 +1,3 @@
-use piston::Key::W;
 use crate::libs::constants::app_constants::*;
 
 #[derive(Copy, Clone)]
@@ -29,8 +28,10 @@ pub fn check_lines(map: &mut Map) {
 
     let mut not_full = true;
 
-    for j in (WORLD_SIZE[1]-1.0) as i32..=0 {
+    for mut j in 0..WORLD_SIZE[1] as i32 {
         let mut line = 0;
+        j = (j - (WORLD_SIZE[1] as i32 - 1)).abs();
+
         for i in 0..WORLD_SIZE[0] as i32 {
             if map[i as usize][j as usize].filled {
                 if not_full {
@@ -42,6 +43,10 @@ pub fn check_lines(map: &mut Map) {
                 } else {
                     if (j - 1) >= 0 {
                         map[i as usize][j as usize] = map[i as usize][(j-1) as usize];
+
+                        if map[i as usize][j as usize].piece != PieceType::None {
+                            map[i as usize][j as usize].filled = true;
+                        }
                     } else {
                         map[i as usize][j as usize] = MapCell::new(PieceType::None);
                     }

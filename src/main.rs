@@ -131,7 +131,6 @@ fn main() {
                     piece.fall(&mut map);
                 } else {
                     piece.landed(&mut map);
-                    check_lines(&mut map);
                 }
             }
 
