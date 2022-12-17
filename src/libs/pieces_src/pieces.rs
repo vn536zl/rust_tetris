@@ -135,8 +135,10 @@ impl Piece {
         self.active = false;
 
         for cord in self.shape {
-            map[cord[0] as usize][cord[1] as usize] = MapCell::new(self.piece);
-            map[cord[0] as usize][cord[1] as usize].filled = true;
+            if (cord[0] >= 0 && cord[1] >= 0) && (cord[0] < WORLD_SIZE[0] as i32 && cord[1] < WORLD_SIZE[1] as i32) {
+                map[cord[0] as usize][cord[1] as usize] = MapCell::new(self.piece);
+                map[cord[0] as usize][cord[1] as usize].filled = true;
+            }
         }
         check_lines(map);
     }

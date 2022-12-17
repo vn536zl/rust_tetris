@@ -4,6 +4,7 @@ extern crate opengl_graphics;
 extern crate piston;
 extern crate rand;
 
+use std::collections::HashSet;
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::{Events, EventSettings};
@@ -16,6 +17,7 @@ use tetris::libs::constants::app_constants::*;
 use tetris::libs::map_src::map::*;
 use tetris::libs::pieces_src::pieces::*;
 
+use std::{thread, time};
 
 fn rand_piece() -> Piece {
     let rand_num = rand::thread_rng().gen_range(1..=7);
@@ -61,9 +63,10 @@ fn main() {
     let mut map = build_map();
     let mut piece = rand_piece();
 
+    let mut keys = HashSet::new();
     let mut landed = false;
-    let mut seconds = 0.0;
-    let mut old_seconds = 0;
+    let mut seconds: f64 = 0.0;
+    let mut old_seconds: f64 = 0.0;
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
@@ -103,14 +106,31 @@ fn main() {
         if let Some(k) = e.button_args() {
             if k.state == ButtonState::Press {
                 match k.button {
-                    Button::Keyboard(Key::Space) => {
-                        piece.fall(&mut map);
-                    },
                     Button::Keyboard(Key::S) => {
                         piece.rotate("Counter", &mut map);
                     },
                     Button::Keyboard(Key::W) => {
                         piece.rotate("Clockwise", &mut map);
+                    },
+                    _ => {
+                        keys.insert(k.button);
+                    }
+                }
+            }
+            if k.state == ButtonState::Release {
+                keys.remove(&k.button);
+            }
+        }
+        if let Some(u) = e.update_args() {
+            seconds += u.dt;
+            println!("Seconds: {}, Old Seconds: {}", seconds, old_seconds);
+
+
+            thread::sleep(time::Duration::from_millis(10));
+            for key in &keys {
+                match key {
+                    Button::Keyboard(Key::Space) => {
+                        piece.fall(&mut map);
                     },
                     Button::Keyboard(Key::A) => {
                         piece.shift("left", &mut map);
@@ -121,20 +141,17 @@ fn main() {
                     _ => {},
                 }
             }
-        }
-        if let Some(u) = e.update_args() {
-            seconds += u.dt;
 
-            if seconds.floor() as i32 > old_seconds {
-                landed = piece.check_landed(&mut map);
-                if !landed {
-                    piece.fall(&mut map);
-                } else {
-                    piece.landed(&mut map);
-                }
+            thread::sleep(time::Duration::from_millis(290));
+            landed = piece.check_landed(&mut map);
+            if !landed {
+                piece.fall(&mut map);
+            } else {
+                piece.landed(&mut map);
             }
 
-            old_seconds = seconds.floor() as i32;
+
+            old_seconds = seconds;
         }
     }
 }

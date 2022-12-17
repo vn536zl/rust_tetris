@@ -14,7 +14,7 @@ pub const WORLD_SIZE: [f64; 2] = [START_SIZE[0]/PIXEL_SIZE, START_SIZE[1]/PIXEL_
 
 pub type Color = [f32; 4];
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum PieceType {
     None,
     I,
