@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::Write;
 
 use glutin_window::GlutinWindow as Window;
+use graphics::CharacterCache;
 use opengl_graphics::{GlGraphics, GlyphCache, OpenGL, TextureSettings};
 
 use piston::event_loop::{Events, EventSettings};
@@ -20,6 +21,12 @@ use rand::Rng;
 use tetris::libs::constants::app_constants::*;
 use tetris::libs::map_src::map::*;
 use tetris::libs::pieces_src::pieces::*;
+
+/*TODO:
+    HOLD PIECE
+    INSTA-DROP
+    PAUSE/START
+ */
 
 fn rand_piece(map: &Map) -> (Piece, bool) {
     let rand_num = rand::thread_rng().gen_range(1..=7);
@@ -35,7 +42,7 @@ fn rand_piece(map: &Map) -> (Piece, bool) {
         _ => PieceType::None,
     };
 
-    let new_piece = Piece::new(piece);
+    let new_piece = Piece::new(piece, [4, 0]);
 
     let mut lose = false;
     for cord in new_piece.shape {
@@ -62,29 +69,53 @@ fn map_check(piece: &Piece, map: &mut Map) {
     }
 }
 
-fn draw_game(gl: &mut GlGraphics, piece: &Piece, map: &mut Map, r: RenderArgs ) {
+fn draw_game(gl: &mut GlGraphics, piece: &Piece, map: &mut Map, r: RenderArgs, next_piece: &Piece ) {
+    let offset = SCREEN_SIZE[0]/4.0;
+
     gl.draw(r.viewport(), |c, g| {
         graphics::clear(WHITE, g);
 
         for i in 0..WORLD_SIZE[0] as i32 {
             for j in 0..WORLD_SIZE[1] as i32 {
-                let pos: [f64; 4] = [
-                    PIXEL_SIZE * i as f64,
-                    PIXEL_SIZE * j as f64,
-                    PIXEL_SIZE * (i + 1) as f64,
-                    PIXEL_SIZE * (j + 1) as f64,
-                ];
+                let cell = graphics::rectangle::square((PIXEL_SIZE * i as f64) + offset, (PIXEL_SIZE * j as f64) + 5.0, PIXEL_SIZE);
 
                 map_check(&piece, map);
 
                 let color = map[i as usize][j as usize].color;
 
                 graphics::Rectangle::new_border(BLACK, 2.0).color(color).draw(
-                    pos,
+                    cell,
                     &c.draw_state,
                     c.transform,
-                    g,
-                );
+                    g
+                )
+            }
+        }
+
+        let mut next_piece_map = [[MapCell::new(PieceType::None); 4]; 4];
+        let next_piece_ref = match next_piece.piece {
+            PieceType::I => {
+                Piece::new(next_piece.piece, [2,1])
+            }
+            _ => Piece::new(next_piece.piece, [1,1])
+        };
+
+        for i in 0..4 {
+            for j in 0..4 {
+                let next_piece_box = graphics::rectangle::square((PIXEL_SIZE * (i as f64 + WORLD_SIZE[0])) + offset + 10.0, (PIXEL_SIZE * j as f64) + 5.0, PIXEL_SIZE);
+
+                if next_piece_ref.shape.contains(&[i, j]) {
+                    next_piece_map[i as usize][j as usize] = MapCell::new(next_piece_ref.piece);
+                }
+
+                let color = next_piece_map[i as usize][j as usize].color;
+
+                graphics::Rectangle::new_border(BLACK, 2.0).color(color).draw(
+                    next_piece_box,
+                    &c.draw_state,
+                    c.transform,
+                    g
+                )
             }
         }
     })
@@ -98,6 +129,14 @@ fn game_over_screen(gl: &mut GlGraphics, r: RenderArgs) {
     let ref mut glyphs = GlyphCache::new("fonts.ttf", (), TextureSettings::new())
         .expect("Could not load font");
 
+    let mut width = 0.0;
+    for ch in lose_str.chars() {
+        let character = glyphs.character(64, ch).ok().unwrap();
+        width += (character.advance_width() + character.left()) as f64;
+    }
+
+    let screen_size = SCREEN_SIZE[0];
+
     gl.draw(r.viewport(), |c, g| {
         graphics::clear(WHITE, g);
 
@@ -106,7 +145,7 @@ fn game_over_screen(gl: &mut GlGraphics, r: RenderArgs) {
             lose_str,
             glyphs,
             &c.draw_state,
-            c.transform.trans(START_SIZE[0]/8.0, START_SIZE[1]/2.0),
+            c.transform.trans((screen_size - width)/2.0, START_SIZE[1]/2.0),
                 g
         ).expect("Error Loading Text!");
 
@@ -117,13 +156,14 @@ fn main() {
 
     let opengl = OpenGL::V4_5;
 
-    let settings = WindowSettings::new("Tetris", START_SIZE).exit_on_esc(true);
+    let settings = WindowSettings::new("Tetris", SCREEN_SIZE).exit_on_esc(true);
     let mut window: Window = settings.build().expect("Error Creating Window");
 
     let mut gl = GlGraphics::new(opengl);
 
     let mut map = build_map();
     let (mut piece, mut game_over) = rand_piece(&map);
+    let (mut next_piece, _holder) = rand_piece(&map);
 
     let mut keys = HashSet::new();
     let mut seconds: f64 = 0.0;
@@ -140,7 +180,7 @@ fn main() {
 
         if let Some(r) = e.render_args() {
             if !game_over {
-                draw_game(&mut gl, &piece, &mut map, r);
+                draw_game(&mut gl, &piece, &mut map, r, &next_piece);
             } else {
                 game_over_screen(&mut gl, r);
             }
@@ -152,6 +192,9 @@ fn main() {
                     match k.button {
                         Button::Keyboard(Key::S) => {
                             keys.insert(k.button);
+                        },
+                        Button::Keyboard(Key::W) => {
+                            piece.rotate("Clockwise", &mut map);
                         },
                         Button::Keyboard(Key::P) => {
                             piece.rotate("Clockwise", &mut map);
@@ -231,7 +274,8 @@ fn main() {
             }
 
             if !piece.active {
-                (piece, game_over) = rand_piece(&map);
+                piece = next_piece;
+                (next_piece, game_over) = rand_piece(&map);
             }
 
             old_seconds = seconds;

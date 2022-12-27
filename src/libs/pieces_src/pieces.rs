@@ -101,12 +101,12 @@ fn shape_piece(piece: &PieceType, pos: [i32; 2], rotation: i32) -> Shape {
 }
 
 impl Piece {
-    pub fn new(piece: PieceType) -> Self {
+    pub fn new(piece: PieceType, pos: [i32; 2]) -> Self {
         Piece {
             piece,
-            shape: shape_piece(&piece, [4, 0], 0),
+            shape: shape_piece(&piece, pos, 0),
             rotation: 0,
-            position: [4, 0], //Center of piece defined at (4, 0) to start
+            position: pos,
             active: true,
             color: get_color(&piece)
         }
