@@ -45,10 +45,8 @@ pub fn check_lines(map: &mut Map) {
         if val == WORLD_SIZE[0] as i32 {
             for i in 0..WORLD_SIZE[0] as i32 {
                 for mut j in 0..(key+1) {
-                    println!("{}", j);
                     j = (j - key).abs();
                     if (j - 1) >= 0 {
-                        println!("{:?}", map[i as usize][(j - 1) as usize].piece);
                         map[i as usize][j as usize] = map[i as usize][(j - 1) as usize]
                     } else {
                         map[i as usize][j as usize] = MapCell::new(PieceType::None);

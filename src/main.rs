@@ -5,11 +5,15 @@ extern crate piston;
 extern crate rand;
 
 use std::collections::HashSet;
+use std::fs::File;
+use std::io::Write;
+
 use glutin_window::GlutinWindow as Window;
-use opengl_graphics::{GlGraphics, OpenGL};
+use opengl_graphics::{GlGraphics, GlyphCache, OpenGL, TextureSettings};
+
 use piston::event_loop::{Events, EventSettings};
 use piston::input::{ButtonState, Button, Key};
-use piston::{ButtonEvent, RenderEvent, UpdateEvent, WindowSettings};
+use piston::{ButtonEvent, RenderArgs, RenderEvent, UpdateEvent, WindowSettings};
 
 use rand::Rng;
 
@@ -17,9 +21,7 @@ use tetris::libs::constants::app_constants::*;
 use tetris::libs::map_src::map::*;
 use tetris::libs::pieces_src::pieces::*;
 
-use std::{thread, time};
-
-fn rand_piece() -> Piece {
+fn rand_piece(map: &Map) -> (Piece, bool) {
     let rand_num = rand::thread_rng().gen_range(1..=7);
 
     let piece = match rand_num {
@@ -33,7 +35,16 @@ fn rand_piece() -> Piece {
         _ => PieceType::None,
     };
 
-    Piece::new(piece)
+    let new_piece = Piece::new(piece);
+
+    let mut lose = false;
+    for cord in new_piece.shape {
+        if map[cord[0] as usize][cord[1] as usize].filled {
+            lose = true;
+        }
+    }
+
+    (new_piece, lose)
 }
 
 fn map_check(piece: &Piece, map: &mut Map) {
@@ -51,6 +62,57 @@ fn map_check(piece: &Piece, map: &mut Map) {
     }
 }
 
+fn draw_game(gl: &mut GlGraphics, piece: &Piece, map: &mut Map, r: RenderArgs ) {
+    gl.draw(r.viewport(), |c, g| {
+        graphics::clear(WHITE, g);
+
+        for i in 0..WORLD_SIZE[0] as i32 {
+            for j in 0..WORLD_SIZE[1] as i32 {
+                let pos: [f64; 4] = [
+                    PIXEL_SIZE * i as f64,
+                    PIXEL_SIZE * j as f64,
+                    PIXEL_SIZE * (i + 1) as f64,
+                    PIXEL_SIZE * (j + 1) as f64,
+                ];
+
+                map_check(&piece, map);
+
+                let color = map[i as usize][j as usize].color;
+
+                graphics::Rectangle::new_border(BLACK, 2.0).color(color).draw(
+                    pos,
+                    &c.draw_state,
+                    c.transform,
+                    g,
+                );
+            }
+        }
+    })
+}
+
+fn game_over_screen(gl: &mut GlGraphics, r: RenderArgs) {
+
+    let lose_str = "You Lost";
+
+
+    let ref mut glyphs = GlyphCache::new("fonts.ttf", (), TextureSettings::new())
+        .expect("Could not load font");
+
+    gl.draw(r.viewport(), |c, g| {
+        graphics::clear(WHITE, g);
+
+        use graphics::Transformed;
+        graphics::Text::new_color(BLACK, 64).draw(
+            lose_str,
+            glyphs,
+            &c.draw_state,
+            c.transform.trans(START_SIZE[0]/8.0, START_SIZE[1]/2.0),
+                g
+        ).expect("Error Loading Text!");
+
+    });
+}
+
 fn main() {
 
     let opengl = OpenGL::V4_5;
@@ -61,59 +123,78 @@ fn main() {
     let mut gl = GlGraphics::new(opengl);
 
     let mut map = build_map();
-    let mut piece = rand_piece();
+    let (mut piece, mut game_over) = rand_piece(&map);
 
     let mut keys = HashSet::new();
-    let mut landed = false;
     let mut seconds: f64 = 0.0;
     let mut old_seconds: f64 = 0.0;
+
+
+    let font_file_bytes = include_bytes!("font.ttf");
+    let mut font_file = File::create("fonts.ttf").expect("Could Not Create File");
+    font_file.write_all(font_file_bytes).expect("Could Not Write to file");
+
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
 
         if let Some(r) = e.render_args() {
-            gl.draw(r.viewport(), |c, g| {
-                graphics::clear(WHITE, g);
-
-                if !piece.active {
-                    piece = rand_piece();
-                    landed = false
-                }
-
-                for i in 0..WORLD_SIZE[0] as i32 {
-                    for j in 0..WORLD_SIZE[1] as i32 {
-                        let pos: [f64; 4] = [
-                            PIXEL_SIZE * i as f64,
-                            PIXEL_SIZE * j as f64,
-                            PIXEL_SIZE * (i + 1) as f64,
-                            PIXEL_SIZE * (j + 1) as f64,
-                        ];
-
-                        map_check(&piece, &mut map);
-
-                        let color = map[i as usize][j as usize].color;
-
-                        graphics::Rectangle::new_border(BLACK, 2.0).color(color).draw(
-                            pos,
-                            &c.draw_state,
-                            c.transform,
-                            g,
-                        );
-                    }
-                }
-            })
+            if !game_over {
+                draw_game(&mut gl, &piece, &mut map, r);
+            } else {
+                game_over_screen(&mut gl, r);
+            }
         }
+
         if let Some(k) = e.button_args() {
             if k.state == ButtonState::Press {
-                match k.button {
-                    Button::Keyboard(Key::S) => {
-                        piece.rotate("Counter", &mut map);
-                    },
-                    Button::Keyboard(Key::W) => {
-                        piece.rotate("Clockwise", &mut map);
-                    },
-                    _ => {
-                        keys.insert(k.button);
+                if !game_over {
+                    match k.button {
+                        Button::Keyboard(Key::S) => {
+                            keys.insert(k.button);
+                        },
+                        Button::Keyboard(Key::P) => {
+                            piece.rotate("Clockwise", &mut map);
+                        },
+                        Button::Keyboard(Key::O) => {
+                            piece.rotate("Counter", &mut map);
+                        },
+                        Button::Keyboard(Key::A) => {
+                            piece.shift("left", &mut map);
+                        },
+                        Button::Keyboard(Key::D) => {
+                            piece.shift("right", &mut map);
+                        },
+                        Button::Keyboard(Key::Down) => {
+                            keys.insert(k.button);
+                        },
+                        Button::Keyboard(Key::Up) => {
+                            piece.rotate("Clockwise", &mut map);
+                        },
+                        Button::Keyboard(Key::Left) => {
+                            piece.shift("left", &mut map);
+                        },
+                        Button::Keyboard(Key::Right) => {
+                            piece.shift("right", &mut map);
+                        },
+                        Button::Keyboard(Key::Space) => {
+                            keys.insert(k.button);
+                        },
+                        Button::Keyboard(Key::X) => {
+                            piece.rotate("Clockwise", &mut map);
+                        },
+                        Button::Keyboard(Key::Z) => {
+                            piece.rotate("Counter", &mut map);
+                        },
+                        _ => {},
+                    }
+                } else {
+                    match k.button {
+                        Button::Keyboard(Key::R) => {
+                            map = build_map();
+                            (piece, game_over) = rand_piece(&map);
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -123,33 +204,35 @@ fn main() {
         }
         if let Some(u) = e.update_args() {
             seconds += u.dt;
-            println!("Seconds: {}, Old Seconds: {}", seconds, old_seconds);
 
-
-            thread::sleep(time::Duration::from_millis(10));
             for key in &keys {
+                std::thread::sleep(std::time::Duration::from_millis(50));
                 match key {
                     Button::Keyboard(Key::Space) => {
                         piece.fall(&mut map);
                     },
-                    Button::Keyboard(Key::A) => {
-                        piece.shift("left", &mut map);
+                    Button::Keyboard(Key::Down) => {
+                        piece.fall(&mut map);
                     },
-                    Button::Keyboard(Key::D) => {
-                        piece.shift("right", &mut map);
+                    Button::Keyboard(Key::S) => {
+                        piece.fall(&mut map);
                     },
                     _ => {},
                 }
             }
 
-            thread::sleep(time::Duration::from_millis(290));
-            landed = piece.check_landed(&mut map);
-            if !landed {
-                piece.fall(&mut map);
-            } else {
-                piece.landed(&mut map);
+            let landed = piece.check_landed(&mut map);
+            if seconds.floor() > old_seconds.floor() {
+                if !landed {
+                    piece.fall(&mut map);
+                } else {
+                    piece.landed(&mut map);
+                }
             }
 
+            if !piece.active {
+                (piece, game_over) = rand_piece(&map);
+            }
 
             old_seconds = seconds;
         }
