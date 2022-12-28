@@ -26,9 +26,10 @@ pub fn build_map() -> Map {
     map
 }
 
-pub fn check_lines(map: &mut Map) {
+pub fn check_lines(map: &mut Map) -> i32 {
 
     let mut y_filled: HashMap<i32, i32> = HashMap::new();
+    let mut num_of_lines = 0;
 
     for i in 0..WORLD_SIZE[0] as i32 {
         for j in 0..WORLD_SIZE[1] as i32 {
@@ -43,6 +44,7 @@ pub fn check_lines(map: &mut Map) {
     for key in y_filled.keys().sorted().copied() {
         let val = y_filled.get(&key).copied().unwrap();
         if val == WORLD_SIZE[0] as i32 {
+            num_of_lines += 1;
             for i in 0..WORLD_SIZE[0] as i32 {
                 for mut j in 0..(key+1) {
                     j = (j - key).abs();
@@ -54,5 +56,13 @@ pub fn check_lines(map: &mut Map) {
                 }
             }
         }
+    }
+
+    match num_of_lines {
+        1 => 40,
+        2 => 100,
+        3 => 300,
+        4 => 1200,
+        _ => 0,
     }
 }

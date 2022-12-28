@@ -14,7 +14,7 @@ pub struct Piece {
     pub color: Color,
 }
 
-fn shape_piece(piece: &PieceType, pos: [i32; 2], rotation: i32) -> Shape {
+pub fn shape_piece(piece: &PieceType, pos: [i32; 2], rotation: i32) -> Shape {
     let mut shape: Shape = [[0; 2]; 4];
 
 
@@ -112,6 +112,17 @@ impl Piece {
         }
     }
 
+    pub fn null_piece() -> Self {
+        Piece {
+            piece: PieceType::None,
+            shape: [[0; 2]; 4],
+            rotation: 0,
+            position: [0, 0],
+            active: false,
+            color: WHITE,
+        }
+    }
+
     pub fn check_landed(&mut self, map: &mut Map) -> bool {
         let mut landed = false;
 
@@ -131,7 +142,7 @@ impl Piece {
         landed
     }
 
-    pub fn landed(&mut self, map: &mut Map) {
+    pub fn landed(&mut self, map: &mut Map) -> i32 {
         self.active = false;
 
         for cord in self.shape {
@@ -140,7 +151,7 @@ impl Piece {
                 map[cord[0] as usize][cord[1] as usize].filled = true;
             }
         }
-        check_lines(map);
+        check_lines(map)
     }
 
     pub fn fall(&mut self, map: &mut Map) {
@@ -274,6 +285,21 @@ impl Piece {
                 self.position = new_pos;
                 self.shape = new_shape;
             }
+        }
+    }
+
+    pub fn check_x(&mut self) {
+        let mut dif = 0;
+
+        for cord in self.shape {
+            if cord[0] < 0 {
+                dif = 0 - cord[0];
+            } else if cord[0] >= WORLD_SIZE[0] as i32 {
+                dif = WORLD_SIZE[0] as i32 - cord[0];
+            }
+
+            self.position = [self.position[0] + dif, self.position[1]];
+            self.shape = shape_piece(&self.piece, self.position, self.rotation);
         }
     }
 }
